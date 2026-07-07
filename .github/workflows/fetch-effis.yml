@@ -6,9 +6,9 @@ name: fetch-effis
 # why this lives in a GitHub Action (6 h job budget) rather than a 10 min Consumption
 # Function. EFFIS is retroactively recoverable, so a failed run just retries next day.
 #
-# DISABLED ON SCHEDULE until scripts/fetch_effis.py is ported from the private pipeline
-# (scripts/fetch_effis_fwi.py) and a manual run is verified. Run manually via the
-# "Run workflow" button meanwhile.
+# scripts/fetch_effis.py is ported and unit-checked. Schedule stays OFF until the two
+# secrets (CDSAPI_KEY, AZURE_BLOB_SAS_RW) are set and one manual "Run workflow" verifies
+# it writes raw/effis/effis-*.parquet; then uncomment the schedule block below.
 
 on:
   workflow_dispatch:
@@ -48,11 +48,13 @@ jobs:
 
       - name: Fetch EFFIS FWI tail and upload to blob
         env:
-          AZURE_BLOB_SAS: ${{ secrets.AZURE_BLOB_SAS }}
+          # Write-capable SAS (racwl) — the read-only AZURE_BLOB_SAS used by
+          # publish-archive cannot upload.
+          AZURE_BLOB_SAS_RW: ${{ secrets.AZURE_BLOB_SAS_RW }}
           ACCOUNT: sttutela001
           CONTAINER: tutela-bronze
         run: |
           python scripts/fetch_effis.py \
             --window-days "${{ github.event.inputs.window_days || '10' }}" \
             --account "$ACCOUNT" --container "$CONTAINER" --prefix raw/effis \
-            --sas "$AZURE_BLOB_SAS"
+            --sas "$AZURE_BLOB_SAS_RW"
