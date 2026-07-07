@@ -5,12 +5,13 @@ What a human has to do once. The workflows themselves are self-driving after thi
 ## 1. GitHub repository settings
 
 - **Secrets** (Settings -> Secrets and variables -> Actions):
-  - `AZURE_BLOB_SAS` - a read (+list) SAS for the `sttutela001` account, covering
-    containers `tutela-bronze` and `tutela-backups`. The `fetch-effis` workflow also
-    needs **write** to `tutela-bronze/raw/effis`, so grant `racwl` if you use one SAS for
-    both, or split into `AZURE_BLOB_SAS_RO` (publish) and a write SAS (effis).
-  - `CDSAPI_URL` = `https://ewds.climate.copernicus.eu/api`  (for fetch-effis)
-  - `CDSAPI_KEY` = the ECMWF/EWDS API key  (for fetch-effis)
+  - `AZURE_BLOB_SAS` - read (+list) SAS for `sttutela001`, used by publish-archive. SET.
+  - `AZURE_BLOB_SAS_RW` - write+list SAS (`racwl`), used by fetch-effis to upload
+    `raw/effis/effis-*.parquet`. SET.
+  - `CDSAPI_URL` = `https://ewds.climate.copernicus.eu/api` (fetch-effis). SET.
+  - `CDSAPI_KEY` = the ECMWF/EWDS API key (fetch-effis). **YOU must add this** - it is not
+    readable from here. Add it the same way as the GitHub token file, then paste into the
+    repo secret, or set it directly in Settings.
 - **Branch protection** on `main`: block force-push and history rewrite. This is what
   makes the commit ledger tamper-evident (see docs/provenance.md).
 - The publish workflow pushes to this same repo using the built-in `GITHUB_TOKEN`
@@ -45,11 +46,16 @@ The repo is private today. Flip to public only after the first backfill looks ri
 the READMEs read well. Once public it may be forked, cached, and indexed, so it is a
 one-way door in practice.
 
-## 4. EFFIS (still to finish)
+## 4. EFFIS (one manual verify left)
 
-`scripts/fetch_effis.py` is a stub. Port it from the private `scripts/fetch_effis_fwi.py`
-(checklist in the stub), verify a manual `fetch-effis` run writes a sane parquet to blob,
-then uncomment the `schedule:` block in `.github/workflows/fetch-effis.yml`.
+`scripts/fetch_effis.py` is ported and unit-checked; `AZURE_BLOB_SAS_RW` and `CDSAPI_URL`
+are set. To finish:
+1. Add the `CDSAPI_KEY` repo secret (the ECMWF/EWDS key - not readable from here).
+2. Actions -> fetch-effis -> Run workflow (window_days ~50 for a first backfill). Confirm
+   it writes `raw/effis/effis-YYYY-MM-DD.parquet` to `tutela-bronze`.
+3. Uncomment the `schedule:` block in `.github/workflows/fetch-effis.yml`.
+Publish-archive already looks for `raw/effis/effis-{date}.parquet`, so once the per-day
+files exist they flow into the git archive automatically.
 
 ## 5. Azure fires archiver
 
