@@ -1,0 +1,4 @@
+# Treat archived data as binary so diffs stay readable and merges never mangle bytes.
+archive/**/*.parquet   binary
+archive/**/*.json.gz   binary
+archive/**/*.json      -diff

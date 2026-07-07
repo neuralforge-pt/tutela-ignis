@@ -1,0 +1,91 @@
+name: publish-archive
+
+# Pulls each day's artifacts and commits them to this repo. The commit history is the
+# append-only, publicly timestamped ledger (see docs/provenance.md).
+#
+#   - our forecast    : straight from public R2 (no secret needed)
+#   - official + truth : from Azure blob via a read-only SAS (secret AZURE_BLOB_SAS)
+#
+# Idempotent: only new files produce a commit. Bounded to a trailing window per run;
+# use the workflow_dispatch "window_days" input to backfill more on demand.
+
+on:
+  schedule:
+    - cron: "30 5 * * *"   # 05:30 UTC, after the fires function (03:00) and EFFIS fetch (04:00)
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: "How many trailing days to sync (use a big number for backfill)"
+        default: "14"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-archive
+  cancel-in-progress: false
+
+env:
+  ACCOUNT: sttutela001
+  BRONZE: tutela-bronze
+  BACKUPS: tutela-backups
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync our forecast from R2 (public)
+        run: |
+          set -euo pipefail
+          today=$(date -u +%F)
+          mkdir -p archive/predictions/ours
+          curl -fsS https://data.tutela.land/country.json \
+            | gzip -9 > "archive/predictions/ours/country-${today}.json.gz"
+          curl -fsS https://data.tutela.land/country_forecast_24h.json \
+            | gzip -9 > "archive/predictions/ours/forecast24h-${today}.json.gz"
+
+      - name: Sync official + truth from Azure blob (read SAS)
+        env:
+          SAS: ${{ secrets.AZURE_BLOB_SAS }}
+        run: |
+          set -euo pipefail
+          WINDOW="${{ github.event.inputs.window_days || '14' }}"
+          mkdir -p archive/official/ipma-rcm archive/official/effis-fwi archive/truth/fires
+
+          dl() { # container  blob-path  dest-file
+            az storage blob download --no-progress --only-show-errors \
+              --account-name "$ACCOUNT" --sas-token "$SAS" \
+              --container-name "$1" --name "$2" --file "$3" >/dev/null 2>&1 || rm -f "$3"
+          }
+
+          for i in $(seq 0 "$WINDOW"); do
+            d=$(date -u -d "-${i} day" +%F)
+            # IPMA RCM (bronze)
+            mkdir -p "archive/official/ipma-rcm/${d}"
+            for f in rcm-d0.json rcm-d1.json; do
+              dst="archive/official/ipma-rcm/${d}/${f}"
+              [ -f "$dst" ] || dl "$BRONZE" "raw/official/ipma/${d}/${f}" "$dst"
+            done
+            rmdir "archive/official/ipma-rcm/${d}" 2>/dev/null || true
+            # EFFIS FWI (bronze)
+            dst="archive/official/effis-fwi/effis-${d}.parquet"
+            [ -f "$dst" ] || dl "$BRONZE" "raw/effis/effis-${d}.parquet" "$dst"
+            # Fires truth (backups)
+            dst="archive/truth/fires/fires-${d}.parquet"
+            [ -f "$dst" ] || dl "$BACKUPS" "fires/fires-${d}.parquet" "$dst"
+          done
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name  "tutela-archiver[bot]"
+          git config user.email "archiver@tutela.land"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no new artifacts"; exit 0
+          fi
+          git commit -m "archive: $(date -u +%F)"
+          git push

@@ -1,0 +1,21 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+The data in the archive/ directory of this repository is licensed under the
+Creative Commons Attribution 4.0 International License.
+
+You are free to share and adapt the material for any purpose, even commercially,
+under the condition that you give appropriate credit.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary: https://creativecommons.org/licenses/by/4.0/
+
+Attribution: Martim Ramos / NeuralForge, "Tutela Ignis public benchmark archive",
+https://github.com/neuralforge-pt/tutela-ignis
+
+NOTE ON UPSTREAM SOURCES. This archive redistributes, for verification and research,
+snapshots of third-party products that retain their own terms:
+  - IPMA RCM (Instituto Portugues do Mar e da Atmosfera)
+  - EFFIS / Copernicus Emergency Management Service (GEFF-ERA5 Fire Weather Index)
+  - NASA FIRMS active-fire detections
+  - ICNF (Instituto da Conservacao da Natureza e das Florestas) occurrence records
+Cite and respect the originating institutions when using their data.

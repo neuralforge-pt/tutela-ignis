@@ -1,0 +1,20 @@
+# local scratch
+/tmp/
+*.tmp
+.DS_Store
+
+# python (for benchmark/ code later)
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# latex build artifacts (paper/)
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls

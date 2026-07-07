@@ -1,0 +1,58 @@
+name: fetch-effis
+
+# Pulls the EFFIS / GEFF-ERA5 Fire Weather Index tail from Copernicus EWDS and writes it
+# to Azure blob (tutela-bronze/raw/effis/), where bake_validacao and the publish-archive
+# workflow both read it. EWDS retrievals are async and can queue for many minutes, which is
+# why this lives in a GitHub Action (6 h job budget) rather than a 10 min Consumption
+# Function. EFFIS is retroactively recoverable, so a failed run just retries next day.
+#
+# DISABLED ON SCHEDULE until scripts/fetch_effis.py is ported from the private pipeline
+# (scripts/fetch_effis_fwi.py) and a manual run is verified. Run manually via the
+# "Run workflow" button meanwhile.
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: "Trailing days to attempt (skips days already in blob)"
+        default: "10"
+        required: false
+  # schedule:
+  #   - cron: "0 4 * * *"   # 04:00 UTC — enable after the standalone script is verified
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-effis
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install cdsapi pandas pyarrow xarray netCDF4 azure-storage-blob
+
+      - name: Write EWDS credentials
+        run: |
+          umask 077
+          printf 'url: %s\nkey: %s\n' \
+            "${{ secrets.CDSAPI_URL }}" "${{ secrets.CDSAPI_KEY }}" > "$HOME/.cdsapirc"
+
+      - name: Fetch EFFIS FWI tail and upload to blob
+        env:
+          AZURE_BLOB_SAS: ${{ secrets.AZURE_BLOB_SAS }}
+          ACCOUNT: sttutela001
+          CONTAINER: tutela-bronze
+        run: |
+          python scripts/fetch_effis.py \
+            --window-days "${{ github.event.inputs.window_days || '10' }}" \
+            --account "$ACCOUNT" --container "$CONTAINER" --prefix raw/effis \
+            --sas "$AZURE_BLOB_SAS"
