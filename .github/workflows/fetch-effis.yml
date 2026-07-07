@@ -17,8 +17,8 @@ on:
         description: "Trailing days to attempt (skips days already in blob)"
         default: "10"
         required: false
-  # schedule:
-  #   - cron: "0 4 * * *"   # 04:00 UTC — enable after the standalone script is verified
+  schedule:
+    - cron: "0 4 * * *"   # 04:00 UTC daily (EWDS ~5-day lag; idempotent skip of existing days)
 
 permissions:
   contents: read
