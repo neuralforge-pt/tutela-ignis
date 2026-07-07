@@ -70,9 +70,12 @@ jobs:
               [ -f "$dst" ] || dl "$BRONZE" "raw/official/ipma/${d}/${f}" "$dst"
             done
             rmdir "archive/official/ipma-rcm/${d}" 2>/dev/null || true
-            # EFFIS FWI (bronze)
+            # EFFIS FWI (bronze) — per-day producer not wired yet; harmless no-op until it is
             dst="archive/official/effis-fwi/effis-${d}.parquet"
             [ -f "$dst" ] || dl "$BRONZE" "raw/effis/effis-${d}.parquet" "$dst"
+            # Our per-cell predictions, the authoritative benchmark input (backups)
+            dst="archive/predictions/ours/predictions-${d}.parquet"
+            [ -f "$dst" ] || dl "$BACKUPS" "predictions/predictions-${d}.parquet" "$dst"
             # Fires truth (backups)
             dst="archive/truth/fires/fires-${d}.parquet"
             [ -f "$dst" ] || dl "$BACKUPS" "fires/fires-${d}.parquet" "$dst"

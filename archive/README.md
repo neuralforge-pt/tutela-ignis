@@ -9,6 +9,7 @@ appear a few days after the fact, but once written it is immutable.
 ```
 archive/
 ├── predictions/ours/
+│   ├── predictions-YYYY-MM-DD.parquet   per-cell record (authoritative benchmark input)
 │   ├── country-YYYY-MM-DD.json.gz       our served risk map that day (nowcast)
 │   └── forecast24h-YYYY-MM-DD.json.gz   our forecast issued that day for the next day
 ├── official/
@@ -27,9 +28,14 @@ Dates are UTC calendar days unless noted.
 ## Streams
 
 ### `predictions/ours/` - our model
-The exact files served to the public at https://data.tutela.land, gzipped verbatim.
-`country-*.json` is the nowcast risk map (~88,527 continental cells, model
-`seasonal-ensemble:be23+lst1`); `forecast24h-*.json` is the next-day forecast.
+`predictions-*.parquet` is the authoritative per-cell record (cell id, coordinates, fire
+probability, discrete risk level) as archived from the production database daily since
+2026-05-19; this is the file the benchmark scores against. `country-*.json.gz` and
+`forecast24h-*.json.gz` are the exact files served to the public at
+https://data.tutela.land, gzipped verbatim (~88,527 continental cells, model
+`seasonal-ensemble:be23+lst1`), captured going forward from 2026-07-07 (R2 keeps no
+history, so the served-file form cannot be backfilled before that date; the parquet record
+covers the full prospective window).
 Each cell carries a relative risk score and a discrete level. The score is a **relative
 ranking**, not a literal per-cell-day burn probability; see the calibration discussion in
 the paper. JSON is gzipped because the raw grid is ~2.6 MB/day.
