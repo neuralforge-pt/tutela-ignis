@@ -63,9 +63,12 @@ jobs:
 
           for i in $(seq 0 "$WINDOW"); do
             d=$(date -u -d "-${i} day" +%F)
-            # IPMA RCM (bronze)
+            # IPMA RCM (bronze). _provenance.json = Wayback snapshot pointers written by
+            # func-tutela-archiver since 2026-07-11 — independent-mirror proof that the RCM
+            # bytes we archived really were IPMA's on that date (see docs/provenance.md, Claim B).
+            # Absent for days before 2026-07-11 (dl removes the failed download → harmless no-op).
             mkdir -p "archive/official/ipma-rcm/${d}"
-            for f in rcm-d0.json rcm-d1.json; do
+            for f in rcm-d0.json rcm-d1.json _provenance.json; do
               dst="archive/official/ipma-rcm/${d}/${f}"
               [ -f "$dst" ] || dl "$BRONZE" "raw/official/ipma/${d}/${f}" "$dst"
             done
