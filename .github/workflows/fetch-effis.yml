@@ -1,14 +1,14 @@
 name: fetch-effis
 
 # Pulls the EFFIS / GEFF-ERA5 Fire Weather Index tail from Copernicus EWDS and writes it
-# to Azure blob (tutela-bronze/raw/effis/), where bake_validacao and the publish-archive
+# to Azure blob (bronze/raw/effis/), where bake_validacao and the publish-archive
 # workflow both read it. EWDS retrievals are async and can queue for many minutes, which is
 # why this lives in a GitHub Action (6 h job budget) rather than a 10 min Consumption
 # Function. EFFIS is retroactively recoverable, so a failed run just retries next day.
 #
-# scripts/fetch_effis.py is ported and unit-checked. Schedule stays OFF until the two
-# secrets (CDSAPI_KEY, AZURE_BLOB_SAS_RW) are set and one manual "Run workflow" verifies
-# it writes raw/effis/effis-*.parquet; then uncomment the schedule block below.
+# scripts/fetch_effis.py is ported and unit-checked. Azure identifiers are sourced from
+# secrets (AZ_ACCOUNT, AZ_BRONZE, AZ_PREFIX_EFFIS) so they never appear in this file or the
+# (public) run logs. Requires also: CDSAPI_URL, CDSAPI_KEY, AZURE_BLOB_SAS_RW.
 
 on:
   workflow_dispatch:
@@ -51,10 +51,11 @@ jobs:
           # Write-capable SAS (racwl) — the read-only AZURE_BLOB_SAS used by
           # publish-archive cannot upload.
           AZURE_BLOB_SAS_RW: ${{ secrets.AZURE_BLOB_SAS_RW }}
-          ACCOUNT: sttutela001
-          CONTAINER: tutela-bronze
+          ACCOUNT: ${{ secrets.AZ_ACCOUNT }}
+          CONTAINER: ${{ secrets.AZ_BRONZE }}
+          PREFIX_EFFIS: ${{ secrets.AZ_PREFIX_EFFIS }}
         run: |
           python scripts/fetch_effis.py \
             --window-days "${{ github.event.inputs.window_days || '10' }}" \
-            --account "$ACCOUNT" --container "$CONTAINER" --prefix raw/effis \
+            --account "$ACCOUNT" --container "$CONTAINER" --prefix "$PREFIX_EFFIS" \
             --sas "$AZURE_BLOB_SAS_RW"

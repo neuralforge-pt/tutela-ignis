@@ -8,6 +8,13 @@ name: publish-archive
 #
 # Idempotent: only new files produce a commit. Bounded to a trailing window per run;
 # use the workflow_dispatch "window_days" input to backfill more on demand.
+#
+# All Azure identifiers + data URLs are sourced from secrets so they never appear in
+# this file or in the (public) run logs. Required secrets: AZ_ACCOUNT, AZ_BRONZE,
+# AZ_BACKUPS, URL_COUNTRY, URL_FORECAST24H, AZ_PREFIX_IPMA, AZ_PREFIX_EFFIS,
+# AZURE_BLOB_SAS. (Short common-word source prefixes "predictions"/"fires" stay literal
+# on purpose: they match the public archive/ folder names, so there is nothing to hide,
+# and masking such common words would garble the rest of the log.)
 
 on:
   schedule:
@@ -26,14 +33,17 @@ concurrency:
   group: publish-archive
   cancel-in-progress: false
 
-env:
-  ACCOUNT: sttutela001
-  BRONZE: tutela-bronze
-  BACKUPS: tutela-backups
-
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      ACCOUNT: ${{ secrets.AZ_ACCOUNT }}
+      BRONZE: ${{ secrets.AZ_BRONZE }}
+      BACKUPS: ${{ secrets.AZ_BACKUPS }}
+      URL_COUNTRY: ${{ secrets.URL_COUNTRY }}
+      URL_FORECAST24H: ${{ secrets.URL_FORECAST24H }}
+      PREFIX_IPMA: ${{ secrets.AZ_PREFIX_IPMA }}
+      PREFIX_EFFIS: ${{ secrets.AZ_PREFIX_EFFIS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,9 +52,9 @@ jobs:
           set -euo pipefail
           today=$(date -u +%F)
           mkdir -p archive/predictions/ours
-          curl -fsS https://data.tutela.land/country.json \
+          curl -fsS "$URL_COUNTRY" \
             | gzip -9 > "archive/predictions/ours/country-${today}.json.gz"
-          curl -fsS https://data.tutela.land/country_forecast_24h.json \
+          curl -fsS "$URL_FORECAST24H" \
             | gzip -9 > "archive/predictions/ours/forecast24h-${today}.json.gz"
 
       - name: Sync official + truth from Azure blob (read SAS)
@@ -70,12 +80,12 @@ jobs:
             mkdir -p "archive/official/ipma-rcm/${d}"
             for f in rcm-d0.json rcm-d1.json _provenance.json; do
               dst="archive/official/ipma-rcm/${d}/${f}"
-              [ -f "$dst" ] || dl "$BRONZE" "raw/official/ipma/${d}/${f}" "$dst"
+              [ -f "$dst" ] || dl "$BRONZE" "$PREFIX_IPMA/${d}/${f}" "$dst"
             done
             rmdir "archive/official/ipma-rcm/${d}" 2>/dev/null || true
             # EFFIS FWI (bronze) — per-day producer not wired yet; harmless no-op until it is
             dst="archive/official/effis-fwi/effis-${d}.parquet"
-            [ -f "$dst" ] || dl "$BRONZE" "raw/effis/effis-${d}.parquet" "$dst"
+            [ -f "$dst" ] || dl "$BRONZE" "$PREFIX_EFFIS/effis-${d}.parquet" "$dst"
             # Our per-cell predictions, the authoritative benchmark input (backups)
             dst="archive/predictions/ours/predictions-${d}.parquet"
             [ -f "$dst" ] || dl "$BACKUPS" "predictions/predictions-${d}.parquet" "$dst"
