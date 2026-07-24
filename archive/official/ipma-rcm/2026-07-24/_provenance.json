@@ -1,0 +1,12 @@
+{
+  "day": "2026-07-24",
+  "captured_at": "2026-07-24T06:30:17.802791+00:00",
+  "sources": {
+    "rcm-d0.json": "https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d0.json",
+    "rcm-d1.json": "https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d1.json"
+  },
+  "wayback": {
+    "rcm-d0.json": "https://web.archive.org/web/20260724003003/https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d0.json",
+    "rcm-d1.json": "https://web.archive.org/web/20260724003012/https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d1.json"
+  }
+}
